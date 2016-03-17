@@ -13,7 +13,7 @@
 --
 -- Clement Farabet
 ----------------------------------------------------------------------
---require 'debugger.plugins.ffi'
+
 require 'torch'   -- torch
 require 'image'   -- for color transforms
 require 'nn'      -- provides a normalization operator
