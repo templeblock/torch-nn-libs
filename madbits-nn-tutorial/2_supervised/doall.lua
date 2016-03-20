@@ -17,6 +17,7 @@
 -- Clement Farabet
 ----------------------------------------------------------------------
 require 'torch'
+
 ----------------------------------------------------------------------
 print '==> processing options'
 
@@ -63,11 +64,11 @@ torch.manualSeed(opt.seed)
 ----------------------------------------------------------------------
 print '==> executing all'
 
-dofile '/home/jie/Documents/lua_workspace/learn_nn/src/1_data.lua'
-dofile '/home/jie/Documents/lua_workspace/learn_nn/src/2_model.lua'
-dofile '/home/jie/Documents/lua_workspace/learn_nn/src/3_loss.lua'
-dofile '/home/jie/Documents/lua_workspace/learn_nn/src/4_train.lua'
-dofile '/home/jie/Documents/lua_workspace/learn_nn/src/5_test.lua'
+dofile '1_data.lua'
+dofile '2_model.lua'
+dofile '3_loss.lua'
+dofile '4_train.lua'
+dofile '5_test.lua'
 
 ----------------------------------------------------------------------
 print '==> training!'

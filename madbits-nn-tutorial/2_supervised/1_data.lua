@@ -17,7 +17,7 @@
 require 'torch'   -- torch
 require 'image'   -- for color transforms
 require 'nn'      -- provides a normalization operator
-local debugger = require('fb.debugger')
+
 ----------------------------------------------------------------------
 -- parse command line arguments
 if not opt then
@@ -52,6 +52,7 @@ print '==> downloading dataset'
 -- more time consuming
 
 www = 'http://torch7.s3-website-us-east-1.amazonaws.com/data/housenumbers/'
+
 train_file = 'train_32x32.t7'
 test_file = 'test_32x32.t7'
 extra_file = 'extra_32x32.t7'
