@@ -17,7 +17,7 @@
 -- Clement Farabet
 ----------------------------------------------------------------------
 require 'torch'
-
+require 'debugger'
 ----------------------------------------------------------------------
 print '==> processing options'
 
@@ -64,11 +64,11 @@ torch.manualSeed(opt.seed)
 ----------------------------------------------------------------------
 print '==> executing all'
 
-dofile '1_data.lua'
-dofile '2_model.lua'
-dofile '3_loss.lua'
-dofile '4_train.lua'
-dofile '5_test.lua'
+dofile '/home/jie/d2/github/ml-common-libs/torch-nn-libs/madbits-nn-tutorial/2_supervised/1_data.lua'
+dofile '/home/jie/d2/github/ml-common-libs/torch-nn-libs/madbits-nn-tutorial/2_supervised/2_model.lua'
+dofile '/home/jie/d2/github/ml-common-libs/torch-nn-libs/madbits-nn-tutorial/2_supervised/3_loss.lua'
+dofile '/home/jie/d2/github/ml-common-libs/torch-nn-libs/madbits-nn-tutorial/2_supervised/4_train.lua'
+dofile '/home/jie/d2/github/ml-common-libs/torch-nn-libs/madbits-nn-tutorial/2_supervised/5_test.lua'
 
 ----------------------------------------------------------------------
 print '==> training!'

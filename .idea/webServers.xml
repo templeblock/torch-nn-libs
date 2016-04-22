@@ -2,8 +2,8 @@
 <project version="4">
   <component name="WebServers">
     <option name="servers">
-      <webServer id="edb19a1e-8547-40f5-884a-2e59304eff8e" name="Singtel_AWS" url="http://54.179.155.35">
-        <fileTransfer host="54.179.155.35" port="22" privateKey="$USER_HOME$/Dropbox/aws-singtel.pem" accessType="SFTP" username="ubuntu" keyPair="true">
+      <webServer id="edb19a1e-8547-40f5-884a-2e59304eff8e" name="Singtel_AWS" url="http://54.254.172.54">
+        <fileTransfer host="54.254.172.54" port="22" privateKey="$USER_HOME$/Dropbox/aws-singtel.pem" accessType="SFTP" username="ubuntu" keyPair="true">
           <advancedOptions>
             <advancedOptions dataProtectionLevel="Private" showHiddenFiles="true" />
           </advancedOptions>

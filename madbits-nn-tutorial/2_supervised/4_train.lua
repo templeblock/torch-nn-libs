@@ -168,7 +168,6 @@ function train()
                           -- update confusion
                           confusion:add(output, targets[i])
                        end
-
                        -- normalize gradients and f(X)
                        gradParameters:div(#inputs)
                        f = f/#inputs
