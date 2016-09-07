@@ -3,12 +3,14 @@ local LookupTable, parent = torch.class('nn.LookupTable', 'nn.Module')
 
 LookupTable.__version = 4
 
-function LookupTable:__init(nIndex, nOutput, paddingValue)
+function LookupTable:__init(nIndex, nOutput, paddingValue, maxNorm, normType)
    parent.__init(self)
 
    self.weight = torch.Tensor(nIndex, nOutput)
    self.gradWeight = torch.Tensor(nIndex, nOutput):zero()
    self.paddingValue = paddingValue or 0
+   self.maxNorm = maxNorm or nil
+   self.normType = normType or nil
 
    self:reset()
 end
@@ -28,8 +30,18 @@ function LookupTable:accUpdateOnly()
 end
 
 function LookupTable:setPadding(paddingValue)
-    self.paddingValue = paddingValue
-    return self
+   self.paddingValue = paddingValue
+   return self
+end
+
+function LookupTable:setMaxNorm(maxNorm)
+   self.maxNorm = maxNorm
+   return self
+end
+
+function LookupTable:setNormType(normType)
+   self.normType = normType
+   return self
 end
 
 function LookupTable:scaleGradByFreq()
@@ -55,6 +67,7 @@ end
 
 function LookupTable:updateOutput(input)
    self:backCompatibility()
+   self:renorm(input)
    input = self:makeInputContiguous(input)
    if input:dim() == 1 then
       self.output:index(self.weight, 1, input)
@@ -67,6 +80,19 @@ function LookupTable:updateOutput(input)
    return self.output
 end
 
+function LookupTable:updateGradInput(input, gradOutput)
+   -- the input can be of any type (as in the forward it's
+   -- converted anyway to LongTensor) thus, need to allocate
+   -- new memory each time the user changes the input type
+   if torch.type(self.gradInput) ~= torch.type(input) then
+      self.gradInput = input.new()
+   end
+   if not self.gradInput:isSameSizeAs(input) then
+      self.gradInput:resizeAs(input):zero()
+   end
+   return self.gradInput
+end
+
 function LookupTable:accGradParameters(input, gradOutput, scale)
    self:backCompatibility()
    input = self.copiedInput and self._input or input
@@ -77,9 +103,9 @@ function LookupTable:accGradParameters(input, gradOutput, scale)
    end
 
    if not gradOutput:isContiguous() then
-       self._gradOutput = self._gradOutput or gradOutput.new()
-       self._gradOutput:resizeAs(gradOutput):copy(gradOutput)
-       gradOutput = self._gradOutput
+      self._gradOutput = self._gradOutput or gradOutput.new()
+      self._gradOutput:resizeAs(gradOutput):copy(gradOutput)
+      gradOutput = self._gradOutput
    end
 
    self.gradWeight.THNN.LookupTable_accGradParameters(
@@ -95,15 +121,37 @@ function LookupTable:accGradParameters(input, gradOutput, scale)
    )
 end
 
+function LookupTable:renorm(input)
+   if not self.maxNorm then
+      return
+   end
+   -- copy input into _input, so _input is continuous.
+   -- The copied _input will be modified in the C code.
+   self._input:resize(input:size()):copy(input)
+   local row_idx = self._input
+   if row_idx:dim() == 2 then
+      row_idx = row_idx:view(-1)
+   elseif row_idx:dim() ~= 1 then
+      error("input must be a vector or matrix")
+   end
+   -- "row_idx" and "weight" will be modified in the C code
+   self.weight.THNN.LookupTable_renorm(
+      row_idx:cdata(),
+      self.weight:cdata(),
+      self.maxNorm,
+      self.normType or 2
+   )
+end
+
 function LookupTable:type(type, tensorCache)
    parent.type(self, type, tensorCache)
 
    if type == 'torch.CudaTensor' then
       -- CUDA uses _sorted and _indices temporary tensors
-      self._sorted = self.weight.new()
-      self._indices = self.weight.new()
-      self._count = self.weight.new()
-      self._input = self.weight.new()
+      self._sorted = torch.CudaLongTensor.new()
+      self._indices = torch.CudaLongTensor.new()
+      self._count = torch.CudaLongTensor.new()
+      self._input = torch.CudaLongTensor.new()
    else
       -- self._count and self._input should only be converted if using Cuda
       self._count = torch.IntTensor()
@@ -114,8 +162,8 @@ function LookupTable:type(type, tensorCache)
 end
 
 function LookupTable:clearState()
-   self._gradOutput = nil
-   return self
+   nn.utils.clear(self, '_count', '_input', '_gradOutput')
+   return parent.clearState(self)
 end
 
 -- we do not need to accumulate parameters when sharing

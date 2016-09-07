@@ -20,18 +20,29 @@ RETURN:
 function optim.checkgrad(opfunc, x, eps)
     
     -- compute true gradient:
-    local _,dC = opfunc(x)
+    local Corg,dC = opfunc(x)
     dC:resize(x:size())
+    
+    local Ctmp -- temporary value
+    local isTensor = torch.isTensor(Corg)
+    if isTensor then
+          Ctmp = Corg.new(Corg:size())
+    end
     
     -- compute numeric approximations to gradient:
     local eps = eps or 1e-7
     local dC_est = torch.Tensor():typeAs(dC):resizeAs(dC)
     for i = 1,dC:size(1) do
+      local tmp = x[i]
       x[i] = x[i] + eps
       local C1 = opfunc(x)
+      if isTensor then
+          Ctmp:copy(C1)
+          C1 = Ctmp
+      end
       x[i] = x[i] - 2 * eps
       local C2 = opfunc(x)
-      x[i] = x[i] + eps
+      x[i] = tmp
       dC_est[i] = (C1 - C2) / (2 * eps)
     end
 

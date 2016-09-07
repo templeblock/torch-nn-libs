@@ -93,7 +93,7 @@ static THTensor *THTensor_(cloneColumnMajorNrows)(THTensor *self, THTensor *src,
 
 /*
 Create a clone of src in self column major order for use with Lapack.
-If src == self, a new tensor is allocated, in any case, the return tensor should be 
+If src == self, a new tensor is allocated, in any case, the return tensor should be
 freed by calling function.
 */
 static THTensor *THTensor_(cloneColumnMajor)(THTensor *self, THTensor *src)
@@ -124,7 +124,7 @@ void THTensor_(gesv)(THTensor *rb_, THTensor *ra_, THTensor *b, THTensor *a)
   ldb  = n;
 
   ipiv = THIntTensor_newWithSize1d((long)n);
-  THLapack_(gesv)(n, nrhs, 
+  THLapack_(gesv)(n, nrhs,
 		  THTensor_(data)(ra__), lda, THIntTensor_data(ipiv),
 		  THTensor_(data)(rb__), ldb, &info);
 
@@ -205,20 +205,20 @@ void THTensor_(gels)(THTensor *rb_, THTensor *ra_, THTensor *b, THTensor *a)
 
 
   /* get optimal workspace size */
-  THLapack_(gels)('N', m, n, nrhs, THTensor_(data)(ra__), lda, 
-		  THTensor_(data)(rb__), ldb, 
+  THLapack_(gels)('N', m, n, nrhs, THTensor_(data)(ra__), lda,
+		  THTensor_(data)(rb__), ldb,
 		  &wkopt, -1, &info);
   lwork = (int)wkopt;
   work = THTensor_(newWithSize1d)(lwork);
-  THLapack_(gels)('N', m, n, nrhs, THTensor_(data)(ra__), lda, 
-		  THTensor_(data)(rb__), ldb, 
+  THLapack_(gels)('N', m, n, nrhs, THTensor_(data)(ra__), lda,
+		  THTensor_(data)(rb__), ldb,
 		  THTensor_(data)(work), lwork, &info);
 
   THLapackCheckWithCleanup("Lapack Error in %s : The %d-th diagonal element of the triangular factor of A is zero",
                            THCleanup(THTensor_(free)(ra__);
                                      THTensor_(free)(rb__);
                                      THTensor_(free)(work);),
-                           "gels", info);
+                           "gels", info,"");
 
   /* rb__ is currently ldb by nrhs; resize it to n by nrhs */
   rb__->size[0] = n;
@@ -246,7 +246,7 @@ void THTensor_(geev)(THTensor *re_, THTensor *rv_, THTensor *a_, const char *job
 
   /* we want to definitely clone a_ for geev*/
   a = THTensor_(cloneColumnMajor)(NULL, a_);
-  
+
   n = a->size[0];
   lda = n;
 
@@ -267,13 +267,13 @@ void THTensor_(geev)(THTensor *re_, THTensor *rv_, THTensor *a_, const char *job
   re__ = THTensor_(newContiguous)(re_);
 
   /* get optimal workspace size */
-  THLapack_(geev)('N', jobvr[0], n, THTensor_(data)(a), lda, THTensor_(data)(wr), THTensor_(data)(wi), 
+  THLapack_(geev)('N', jobvr[0], n, THTensor_(data)(a), lda, THTensor_(data)(wr), THTensor_(data)(wi),
       NULL, 1, rv_data, ldvr, &wkopt, -1, &info);
 
   lwork = (int)wkopt;
   work = THTensor_(newWithSize1d)(lwork);
 
-  THLapack_(geev)('N', jobvr[0], n, THTensor_(data)(a), lda, THTensor_(data)(wr), THTensor_(data)(wi), 
+  THLapack_(geev)('N', jobvr[0], n, THTensor_(data)(a), lda, THTensor_(data)(wr), THTensor_(data)(wi),
       NULL, 1, rv_data, ldvr, THTensor_(data)(work), lwork, &info);
 
   THLapackCheckWithCleanup(" Lapack Error in %s : %d off-diagonal elements of an didn't converge to zero",
@@ -283,7 +283,7 @@ void THTensor_(geev)(THTensor *re_, THTensor *rv_, THTensor *a_, const char *job
                                      THTensor_(free)(wi);
                                      THTensor_(free)(wr);
                                      THTensor_(free)(work);),
-                           "geev", info);
+                           "geev", info,"");
 
   {
     real *re_data = THTensor_(data)(re__);
@@ -340,7 +340,7 @@ void THTensor_(syev)(THTensor *re_, THTensor *rv_, THTensor *a, const char *jobz
                            THCleanup(THTensor_(free)(rv__);
                                      THTensor_(free)(re__);
                                      THTensor_(free)(work);),
-                           "syev", info);
+                           "syev", info,"");
 
   THTensor_(freeCopyTo)(rv__, rv_);
   THTensor_(freeCopyTo)(re__, re_);
@@ -361,6 +361,7 @@ void THTensor_(gesvd2)(THTensor *ru_, THTensor *rs_, THTensor *rv_, THTensor *ra
 
   int k,m, n, lda, ldu, ldvt, lwork, info;
   THTensor *work;
+  THTensor *rvf_ = THTensor_(new)();
   real wkopt;
 
   THTensor *ra__ = NULL;
@@ -379,7 +380,7 @@ void THTensor_(gesvd2)(THTensor *ru_, THTensor *rs_, THTensor *rv_, THTensor *ra
   ldvt = n;
 
   THTensor_(resize1d)(rs_,k);
-  THTensor_(resize2d)(rv_,ldvt,n);
+  THTensor_(resize2d)(rvf_,ldvt,n);
   if (*jobu == 'A')
     THTensor_(resize2d)(ru_,m,ldu);
   else
@@ -390,8 +391,8 @@ void THTensor_(gesvd2)(THTensor *ru_, THTensor *rs_, THTensor *rv_, THTensor *ra
   /* guard against someone passing a correct size, but wrong stride */
   ru__ = THTensor_(newTransposedContiguous)(ru_);
   rs__ = THTensor_(newContiguous)(rs_);
-  rv__ = THTensor_(newContiguous)(rv_);
-  
+  rv__ = THTensor_(newContiguous)(rvf_);
+
   THLapack_(gesvd)(jobu[0],jobu[0],
 		   m,n,THTensor_(data)(ra__),lda,
 		   THTensor_(data)(rs__),
@@ -416,13 +417,23 @@ void THTensor_(gesvd2)(THTensor *ru_, THTensor *rs_, THTensor *rv_, THTensor *ra
                                THTensor_(free)(rv__);
                                THTensor_(free)(ra__);
                                THTensor_(free)(work);),
-                           "gesvd", info);
+                           "gesvd", info,"");
+
+  if (*jobu == 'S')
+    THTensor_(narrow)(rv__,NULL,1,0,k);
 
   THTensor_(freeCopyTo)(ru__, ru_);
   THTensor_(freeCopyTo)(rs__, rs_);
-  THTensor_(freeCopyTo)(rv__, rv_);
+  THTensor_(freeCopyTo)(rv__, rvf_);
   THTensor_(freeCopyTo)(ra__, ra_);
   THTensor_(free)(work);
+
+  if (*jobu == 'S') {
+    THTensor_(narrow)(rvf_,NULL,1,0,k);
+  }
+  THTensor_(resizeAs)(rv_, rvf_);
+  THTensor_(copy)(rv_, rvf_);
+  THTensor_(free)(rvf_);
 }
 
 void THTensor_(getri)(THTensor *ra_, THTensor *a)
@@ -467,7 +478,7 @@ void THTensor_(getri)(THTensor *ra_, THTensor *a)
   THTensor_(freeCopyTo)(ra__, ra_);
   THTensor_(free)(work);
   THIntTensor_free(ipiv);
-} 
+}
 
 void THTensor_(clearUpLoTriangle)(THTensor *a, const char *uplo)
 {
@@ -564,7 +575,6 @@ void THTensor_(potrs)(THTensor *rb_, THTensor *b, THTensor *a, const char *uplo)
   if (b == NULL) b = rb_;
 
   THArgCheck(a->size[0] == a->size[1], 2, "A should be square");
-  THArgCheck(b->size[0] >= b->size[1], 2, "Matrix B is rank-deficient");
 
   int n, nrhs, lda, ldb, info;
   THTensor *ra__; // working version of A matrix to be passed into lapack TRTRS
@@ -578,7 +588,7 @@ void THTensor_(potrs)(THTensor *rb_, THTensor *b, THTensor *a, const char *uplo)
   lda  = n;
   ldb  = n;
 
-  THLapack_(potrs)(uplo[0], n, nrhs, THTensor_(data)(ra__), 
+  THLapack_(potrs)(uplo[0], n, nrhs, THTensor_(data)(ra__),
                    lda, THTensor_(data)(rb__), ldb, &info);
 
 
@@ -656,7 +666,7 @@ void THTensor_(pstrf)(THTensor *ra_, THIntTensor *rpiv_, THTensor *a, const char
                            THCleanup(
                                THTensor_(free)(ra__);
                                THTensor_(free)(work);),
-                           "pstrf", info);
+                           "pstrf", info,"");
 
   THTensor_(clearUpLoTriangle)(ra__, uplo);
 
@@ -750,7 +760,7 @@ void THTensor_(geqrf)(THTensor *ra_, THTensor *rtau_, THTensor *a)
                            THCleanup(
                                THTensor_(free)(ra__);
                                THTensor_(free)(work);),
-                           "geqrf", info);
+                           "geqrf", info,"");
 
   THTensor_(freeCopyTo)(ra__, ra_);
   THTensor_(free)(work);
@@ -803,7 +813,7 @@ void THTensor_(orgqr)(THTensor *ra_, THTensor *a, THTensor *tau)
                            THCleanup(
                                THTensor_(free)(ra__);
                                THTensor_(free)(work);),
-                           "orgqr", info);
+                           "orgqr", info,"");
   THTensor_(freeCopyTo)(ra__, ra_);
   THTensor_(free)(work);
 }
@@ -866,7 +876,7 @@ void THTensor_(ormqr)(THTensor *ra_, THTensor *a, THTensor *tau, THTensor *c, co
                            THCleanup(
                                THTensor_(free)(ra__);
                                THTensor_(free)(work);),
-                           "ormqr", info);
+                           "ormqr", info,"");
   THTensor_(freeCopyTo)(ra__, ra_);
   THTensor_(free)(work);
 }

@@ -550,6 +550,24 @@ Let `x` be a `Tensor` and `n` a number.
 
 In this section, we explain basic mathematical operations for `Tensor`s.
 
+<a name="torch.equal"></a>
+### [boolean] equal([tensor1,] tensor2) ###
+<a name="torch.equal"></a>
+
+Returns `true` iff the dimensions and values of `tensor1` and `tensor2` are exactly the same.
+
+```lua
+x = torch.Tensor{1,2,3}
+y = torch.Tensor{1,2,3}
+> x:equal(y)
+true
+
+y = torch.Tensor{1,2,4}
+> x:equal(y)
+false
+```
+
+Note that `a:equal(b)` is more efficient that `a:eq(b):all()` as it avoids allocation of a temporary tensor and can short-circuit.
 
 <a name="torch.add"></a>
 ### [res] torch.add([res,] tensor, value) ###
@@ -820,50 +838,125 @@ The number of elements must match, but sizes do not matter.
 `torch.addcdiv(z, z, value, x, y)` puts the result in `z`.
 
 
+<a name="torch.fmod"></a>
+### [res] torch.fmod([res,] tensor, value) ###
+<a name="torch.fmod"></a>
+
+Computes remainder of division (rounded towards zero) of all elements in the `Tensor` by `value`.
+This works both for integer and floating point numbers. It behaves the same as Lua bulit-in function `math.fmod()` and a little bit different from `torch.remainder()` and `%` operator. For example:
+
+```lua
+> x = torch.Tensor({-3, 3})
+> torch.fmod(x, 2)
+-1
+ 1
+[torch.DoubleTensor of size 2]
+
+> torch.fmod(x, -2)
+-1
+ 1
+[torch.DoubleTensor of size 2]
+
+> torch.remainder(x, 2)
+ 1
+ 1
+[torch.DoubleTensor of size 2]
+
+> torch.remainder(x, -2)
+-1
+-1
+[torch.DoubleTensor of size 2]
+```
+
+`z = torch.fmod(x, 2)` will return a new `Tensor` with the result of `math.fmod(x, 2)`.
+
+`torch.fmod(z, x, 2)` will put the result of `math.fmod(x, 2)` in `z`.
+
+`x:fmod(2)` will replace all elements of `x` the result of `math.fmod(x, 2)` in-place.
+
+`z:fmod(x, 2)` puts the result of `math.fmod(x, 2)` in `z`.
+
+
+<a name="torch.remainder"></a>
+### [res] torch.remainder([res,] tensor, value) ###
+<a name="torch.remainder"></a>
+
+Computes remainder of division (rounded to nearest) of all elements in the `Tensor` by `value`.
+This works both for integer and floating point numbers. It behaves the same as `%` operator and can be expressed as `a % b = a - b * floor(a/b)`. See `torch.fmod()` for comparison.
+
+`z = torch.remainder(x, 2)` will return a new `Tensor` with the result of `x % 2`.
+
+`torch.remainder(z, x, 2)` will put the result of `x % 2` in `z`.
+
+`x:remainder(2)` will replace all elements of `x` the result of `x % 2` in-place.
+
+`z:remainder(x, 2)` puts the result of `x % 2` in `z`.
+
+
 <a name="torch.mod"></a>
 ### [res] torch.mod([res,] tensor, value) ###
 <a name="torch.mod"></a>
 
-Compute remainder (modulo) of division of all elements in the `Tensor` by `value`.
-This works both for integer and floating point numbers and can be expressed as
-a % b = a - b * floor(a/b).
+This function is deprecated and exists only for compatibility with previous versions. Please use `torch.fmod()` or `torch.remainder()` instead.
 
-`z = torch.mod(x, 2)` will return a new `Tensor` with the result of `x % 2`.
 
-`torch.mod(z, x, 2)` will put the result of `x % 2` in `z`.
+<a name="torch.cfmod"></a>
+### [res] torch.cfmod([res,] tensor1, tensor2) ###
+<a name="torch.cfmod"></a>
 
-`x:mod(2)` will replace all elements of `x` the result of `x % 2` in-place.
+Computes the element-wise remainder of the division (rounded towards zero) of `tensor1` by `tensor2`.
+The number of elements must match, but sizes do not matter.
 
-`z:mod(x, 2)` puts the result of `x % 2` in `z`.
+```lua
+> x = torch.Tensor({{3, 3}, {-3, -3}})
+> y = torch.Tensor({{2, -2}, {2, -2}})
+> x:cfmod(y)
+ 1  1
+-1 -1
+[torch.DoubleTensor of size 2x2]
+```
+
+`z = torch.cfmod(x, y)` returns a new `Tensor`.
+
+`torch.cfmod(z, x, y)` puts the result in `z`.
+
+`y:cfmod(x)` replaces all elements of `y` by their remainders of division (rounded towards zero) by
+corresponding elements of `x`.
+
+`z:cfmod(x, y)` puts the result in `z`.
+
+
+<a name="torch.cremainder"></a>
+### [res] torch.cremainder([res,] tensor1, tensor2) ###
+<a name="torch.cremainder"></a>
+
+Computes element-wise remainder of the division (rounded to nearest) of `tensor1` by `tensor2`.
+The number of elements must match, but sizes do not matter.
+
+```lua
+> x = torch.Tensor({{3, 3}, {-3, -3}})
+> y = torch.Tensor({{2, -2}, {2, -2}})
+> x:cfmod(y)
+ 1  1
+-1 -1
+[torch.DoubleTensor of size 2x2]
+```
+
+`z = torch.cremainder(x, y)` returns a new `Tensor`.
+
+`torch.cremainder(z, x, y)` puts the result in `z`.
+
+`y:cremainder(x)` replaces all elements of `y` by their remainders of division (rounded to nearest) by
+corresponding elements of `x`.
+
+`z:cremainder(x, y)` puts the result in `z`.
 
 
 <a name="torch.cmod"></a>
 ### [res] torch.cmod([res,] tensor1, tensor2) ###
 <a name="torch.cmod"></a>
 
-Computes the element-wise remainder of the division of `tensor1` by `tensor2`.
-The number of elements must match, but sizes do not matter.
-
-```lua
-> x = torch.range(1, 4)
-> y = torch.Tensor(2, 2):fill(3)
-> x:cmod(y)
-> x
- 1
- 2
- 0
- 1
-[torch.DoubleTensor of size 4]
-```
-
-`z = torch.cmod(x, y)` returns a new `Tensor`.
-
-`torch.cmod(z, x, y)` puts the result in `z`.
-
-`y:cmod(x)` replaces all elements of `y` by their remainder of division by
-corresponding elements of `x`.
-
-`z:cmod(x, y)` puts the result in `z`.
+This function is deprecated and exists only for compatibility with previous versions. Please use `torch.cfmod()` or `torch.cremainder()` instead.
 
 
 <a name="torch.dot"></a>
@@ -885,20 +978,17 @@ The number of elements must match: both `Tensor`s are seen as a 1D vector.
 
 
 <a name="torch.addmv"></a>
-### [res] torch.addmv([res,] [beta,] [v1,] vec1, [v2,] mat, vec2) ###
+### [res] torch.addmv([res,] [v1,] vec1, [v2,] mat, vec2) ###
 <a name="torch.addmv"></a>
 
 Performs a matrix-vector multiplication between `mat` (2D `Tensor`) and `vec2` (1D `Tensor`) and add it to `vec1`.
 
 Optional values `v1` and `v2` are scalars that multiply `vec1` and `vec2` respectively.
 
-Optional value `beta` is  a scalar that scales the result `Tensor`, before accumulating the result into the `Tensor`.
-Defaults to `1.0`.
-
 In other words,
 
 ```
-res = (beta * res) + (v1 * vec1) + (v2 * (mat * vec2))
+res = (v1 * vec1) + (v2 * (mat * vec2))
 ```
 
 Sizes must respect the matrix-multiplication operation: if `mat` is a `n × m` matrix, `vec2` must be vector of size `m` and `vec1` must be a vector of size `n`.
@@ -919,10 +1009,21 @@ Sizes must respect the matrix-multiplication operation: if `mat` is a `n × m` m
 
 `torch.addmv(r, x, y, z)` puts the result in `r`.
 
-`x:addmv(y, z)` accumulates `y * z` into `x`.
+**Differences when used as a method**
 
-`r:addmv(x, y, z)` puts the result of `x + y * z` into `r`.
+`x:addmv(y, z)` does `x = x + y * z`
 
+`r:addmv(x, y, z)`  does `r = x + y * z` if x is a vector
+
+`r:addmv(s, y, z)`   does `r = r + s * y * z` if `s` is a scalar.
+
+`r:addmv(x, s, y, z)`   does `r = x + s * y * z` if `s` is a scalar and `x` is a vector.
+
+`r:addmv(s1, s2, y, z)`   does `r = s1 * r + s2 * y * z` if `s1` and `s2` are scalars.
+
+The last example does not accurately fit into the function signature, and needs a special mention. It changes the function signature to:
+
+`[vec1] = vec1:addmv([v1,] [v2,] mat, vec2)`
 
 <a name="torch.addr"></a>
 ### [res] torch.addr([res,] [v1,] mat, [v2,] vec1, vec2) ###
@@ -980,20 +1081,17 @@ If `vec1` is a vector of size `n` and `vec2` is a vector of size `m`, then `mat`
 
 
 <a name="torch.addmm"></a>
-### [res] torch.addmm([res,] [beta,] [v1,] M [v2,] mat1, mat2) ###
+### [res] torch.addmm([res,] [v1,] M, [v2,] mat1, mat2) ###
 <a name="torch.addmm"></a>
 
 Performs a matrix-matrix multiplication between `mat1` (2D `Tensor`) and `mat2` (2D `Tensor`).
 
 Optional values `v1` and `v2` are scalars that multiply `M` and `mat1 * mat2` respectively.
 
-Optional value `beta` is  a scalar that scales the result `Tensor`, before accumulating the result into the `Tensor`.
-Defaults to `1.0`.
-
 In other words,
 
 ```
-res = (res * beta) + (v1 * M) + (v2 * mat1 * mat2)
+res = (v1 * M) + (v2 * mat1 * mat2)
 ```
 
 If `mat1` is a `n × m` matrix, `mat2` a `m × p` matrix, `M` must be a `n × p` matrix.
@@ -1002,13 +1100,23 @@ If `mat1` is a `n × m` matrix, `mat2` a `m × p` matrix, `M` must be a `n × p`
 
 `torch.addmm(r, M, mat1, mat2)` puts the result in `r`.
 
-`M:addmm(mat1, mat2)` puts the result in `M`.
+**Differences when used as a method**
 
-`r:addmm(M, mat1, mat2)` puts the result in `r`.
+`M:addmm(mat1, mat2)` does `M = M + mat1 * mat2`.
+
+`r:addmm(M, mat1, mat2)`  does `r = M + mat1 * mat2`.
+
+`r:addmm(v1, M, v2, mat1, mat2)` does `r = (v1 * M) + (v2 * mat1 * mat2)`.
+
+`M:addmm(v1, v2, mat1, mat2)` does `M = (v1 * M) + (v2 * mat1 * mat2)`.
+
+The last example does not accurately fit into the function signature, and needs a special mention. It changes the function signature to:
+
+`[M] = M:addmm([v1,] [v2,] mat1, mat2)`
 
 
 <a name="torch.addbmm"></a>
-### [res] torch.addbmm([res,] [v1,] M [v2,] batch1, batch2) ###
+### [res] torch.addbmm([res,] [v1,] M, [v2,] batch1, batch2) ###
 <a name="torch.addbmm"></a>
 
 Batch matrix matrix product of matrices stored in `batch1` and `batch2`, with a reduced add step (all matrix multiplications get accumulated in a single place).
@@ -1030,7 +1138,7 @@ res = (v1 * M) + (v2 * sum(batch1_i * batch2_i, i = 1, b))
 
 
 <a name="torch.baddbmm"></a>
-### [res] torch.baddbmm([res,] [v1,] M [v2,] batch1, batch2) ###
+### [res] torch.baddbmm([res,] [v1,] M, [v2,] batch1, batch2) ###
 <a name="torch.baddbmm"></a>
 
 Batch matrix matrix product of matrices stored in `batch1` and `batch2`, with batch add.
@@ -2252,7 +2360,7 @@ Note: Irrespective of the original strides, the returned matrices `resb` and `re
 
 `A` and `V` are `m × m` matrices and `e` is a `m` dimensional vector.
 
-This function calculates all eigenvalues (and vectors) of `A` such that `A = V' diag(e) V`.
+This function calculates all eigenvalues (and vectors) of `A` such that `A = V diag(e) V'`.
 
 Third argument defines computation of eigenvectors or eigenvalues only.
 If it is `'N'`, only eigenvalues are computed.
@@ -2324,7 +2432,7 @@ Note: Irrespective of the original strides, the returned matrix `V` will be tran
 
 `A` and `V` are `m × m` matrices and `e` is a `m` dimensional vector.
 
-This function calculates all right eigenvalues (and vectors) of `A` such that `A = V' diag(e) V`.
+This function calculates all right eigenvalues (and vectors) of `A` such that `A = V diag(e) V'`.
 
 Third argument defines computation of eigenvectors or eigenvalues only.
 If it is `'N'`, only eigenvalues are computed.

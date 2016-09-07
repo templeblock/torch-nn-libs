@@ -130,16 +130,16 @@ function Module:type(type, tensorCache)
    return self
 end
 
-function Module:float()
-   return self:type('torch.FloatTensor')
+function Module:float(...)
+   return self:type('torch.FloatTensor',...)
 end
 
-function Module:double()
-   return self:type('torch.DoubleTensor')
+function Module:double(...)
+   return self:type('torch.DoubleTensor',...)
 end
 
-function Module:cuda()
-   return self:type('torch.CudaTensor')
+function Module:cuda(...)
+   return self:type('torch.CudaTensor',...)
 end
 
 function Module:reset()
@@ -292,9 +292,11 @@ function Module:getParameters()
    local p, g = Module.flatten(parameters), Module.flatten(gradParameters)
    assert(p:nElement() == g:nElement(),
       'check that you are sharing parameters and gradParameters')
-   for i=1,#parameters do
-      assert(parameters[i]:storageOffset() == gradParameters[i]:storageOffset(),
-         'misaligned parameter at ' .. tostring(i))
+   if parameters then
+      for i=1,#parameters do
+         assert(parameters[i]:storageOffset() == gradParameters[i]:storageOffset(),
+            'misaligned parameter at ' .. tostring(i))
+      end
    end
    return p, g
 end
@@ -378,4 +380,16 @@ end
 
 function Module:clearState()
    return nn.utils.clear(self, 'output', 'gradInput')
+end
+
+-- similar to apply, recursively goes over network and calls
+-- a callback function which returns a new module replacing the old one
+function nn.Module:replace(callback)
+   local out = callback(self)
+   if self.modules then
+      for i, module in ipairs(self.modules) do
+         self.modules[i] = module:replace(callback)
+      end
+   end
+   return out
 end

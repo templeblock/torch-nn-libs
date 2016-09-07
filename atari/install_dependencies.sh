@@ -8,7 +8,7 @@
 TOPDIR=$PWD
 
 # Prefix:
-PREFIX=$PWD/torch
+PREFIX=/home/jie/torch/install
 echo "Installing Torch into: $PREFIX"
 
 if [[ `uname` != 'Linux' ]]; then

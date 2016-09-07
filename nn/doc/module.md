@@ -232,19 +232,19 @@ nn.utils.recursiveType({mlp1, mlp2}, 'torch.FloatTensor')
 ```
 
 <a name="nn.Module.float"></a>
-### float() ###
+### float([tensorCache]) ###
 
-Convenience method for calling [module:type('torch.FloatTensor')](#nn.Module.type)
+Convenience method for calling [module:type('torch.FloatTensor'[, tensorCache])](#nn.Module.type)
 
 <a name="nn.Module.double"></a>
-### double() ###
+### double([tensorCache]) ###
 
-Convenience method for calling [module:type('torch.DoubleTensor')](#nn.Module.type)
+Convenience method for calling [module:type('torch.DoubleTensor'[, tensorCache])](#nn.Module.type)
 
 <a name="nn.Module.cuda"></a>
-### cuda() ###
+### cuda([tensorCache]) ###
 
-Convenience method for calling [module:type('torch.CudaTensor')](#nn.Module.type)
+Convenience method for calling [module:type('torch.CudaTensor'[, tensorCache])](#nn.Module.type)
 
 <a name="nn.statevars.dok"></a>
 ### State Variables ###
@@ -300,11 +300,11 @@ This function will go over all the weights and gradWeights and make them view in
 
 <a name="nn.Module.training"></a>
 ### training() ###
-This sets the mode of the Module (or sub-modules) to `train=true`. This is useful for modules like [Dropout](simple.md#nn.Dropout) that have a different behaviour during training vs evaluation.
+This sets the mode of the Module (or sub-modules) to `train=true`. This is useful for modules like [Dropout](simple.md#nn.Dropout) or [BatchNormalization](simple.md#nn.BatchNormalization) that have a different behaviour during training vs evaluation.
 
 <a name="nn.Module.evaluate"></a>
 ### evaluate() ###
-This sets the mode of the Module (or sub-modules) to `train=false`. This is useful for modules like [Dropout](simple.md#nn.Dropout) that have a different behaviour during training vs evaluation.
+This sets the mode of the Module (or sub-modules) to `train=false`. This is useful for modules like [Dropout](simple.md#nn.Dropout) or [BatchNormalization](simple.md#nn.BatchNormalization) that have a different behaviour during training vs evaluation.
 
 <a name="nn.Module.findModules"></a>
 ### findModules(typename) ###
@@ -398,3 +398,40 @@ nn.ReLU
 Clears intermediate module states as `output`, `gradInput` and others.
 Useful when serializing networks and running low on memory. Internally calls `set()`
 on tensors so it does not break buffer sharing.
+
+
+<a name="nn.Module.apply"></a>
+### apply(function)
+
+Calls provided function on itself and all child modules. This function takes
+module to operate on as a first argument:
+
+```lua
+model:apply(function(module)
+   module.train = true
+end)
+```
+
+In the example above `train` will be set to to `true` in all modules of `model`.
+This is how `training()` and `evaluate()` functions implemented.
+
+
+<a name="nn.Module.replace"></a>
+### replace(function)
+
+Similar to apply takes a function which applied to all modules of a model,
+but uses return value to replace the module. Can be used to replace all
+modules of one type to another or remove certain modules.
+
+For example, can be used to remove `nn.Dropout` layers by replacing them with
+`nn.Identity`:
+
+```lua
+model:replace(function(module)
+   if torch.typename(module) == 'nn.Dropout' then
+      return nn.Identity()
+   else
+      return module
+   end
+end)
+```

@@ -207,7 +207,7 @@ static size_t THDiskFile_position(THFile *self)
   if (offset > -1)
       return (size_t)offset;
   else if(!dfself->file.isQuiet)
-      THError("unable to obtain disk file offset (maybe a long overflow occured)");
+      THError("unable to obtain disk file offset (maybe a long overflow occurred)");
 
   return 0;
 }
@@ -289,6 +289,15 @@ void THDiskFile_longSize(THFile *self, int size)
   THArgCheck(dfself->handle != NULL, 1, "attempt to use a closed file");
   THArgCheck(size == 0 || size == 4 || size == 8, 1, "Invalid long size specified");
   dfself->longSize = size;
+}
+
+void THDiskFile_noBuffer(THFile *self)
+{
+  THDiskFile *dfself = (THDiskFile*)(self);
+  THArgCheck(dfself->handle != NULL, 1, "attempt to use a closed file");
+  if (setvbuf(dfself->handle, NULL, _IONBF, 0)) {
+    THError("error: cannot disable buffer");
+  }
 }
 
 static void THDiskFile_free(THFile *self)

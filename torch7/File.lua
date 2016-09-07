@@ -275,7 +275,7 @@ function File:readObject()
        local dumped = self:readChar(size):string()
        local func, err = loadstring(dumped)
        if not func then
-          error(string.format('Failed to load function from bytecode: %s', err))
+          io.stderr:write(string.format('Warning: Failed to load function from bytecode: %s', err))
        end
        local upvalues = self:readObject()
        for index,upvalue in ipairs(upvalues) do
@@ -298,7 +298,7 @@ function File:readObject()
          local dumped = self:readChar(size):string()
          local func, err = loadstring(dumped)
          if not func then
-            error(string.format('Failed to load function from bytecode: %s', err))
+	    io.stderr:write(string.format('Warning: Failed to load function from bytecode: %s', err))
          end
          if not force then
              objects[index] = func
@@ -424,6 +424,8 @@ function torch.serializeToStorage(object, mode)
    f = f[mode](f)
    f:writeObject(object)
    local storage = f:storage()
+   -- the storage includes an extra NULL character: get rid of it
+   storage:resize(storage:size()-1)
    f:close()
    return storage
 end

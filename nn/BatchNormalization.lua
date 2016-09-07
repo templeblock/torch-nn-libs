@@ -74,9 +74,15 @@ function BN:reset()
 end
 
 function BN:checkInputDim(input)
-   assert(input:dim() == self.nDim, string.format(
-     'only mini-batch supported (%dD tensor), got %dD tensor instead',
-     self.nDim, input:dim()))
+   local iDim = input:dim()
+   assert(iDim == self.nDim or
+              (iDim == self.nDim - 1 and self.train == false), string.format(
+      'only mini-batch supported (%dD tensor), got %dD tensor instead',
+      self.nDim, iDim))
+   local featDim = (iDim == self.nDim - 1) and 1 or 2
+   assert(input:size(featDim) == self.running_mean:nElement(), string.format(
+      'got %d-feature tensor, expected %d',
+      input:size(featDim), self.running_mean:nElement()))
 end
 
 local function makeContiguous(self, input, gradOutput)
@@ -95,10 +101,20 @@ local function makeContiguous(self, input, gradOutput)
    return input, gradOutput
 end
 
+local function makeBatch(self, input)
+    local iDim = input:dim()
+    if self.train == false and iDim == self.nDim - 1 then
+        return nn.utils.addSingletonDimension(input, input, 1)
+    else
+        return input
+    end
+end
+
 function BN:updateOutput(input)
    self:checkInputDim(input)
 
    input = makeContiguous(self, input)
+   input = makeBatch(self, input)
 
    self.output:resizeAs(input)
    self.save_mean = self.save_mean or input.new()
@@ -125,10 +141,11 @@ end
 local function backward(self, input, gradOutput, scale, gradInput, gradWeight, gradBias)
    self:checkInputDim(input)
    self:checkInputDim(gradOutput)
-   assert(self.train == true, 'should be in training mode when self.train is true')
    assert(self.save_mean and self.save_std, 'must call :updateOutput() first')
 
    input, gradOutput = makeContiguous(self, input, gradOutput)
+   input = makeBatch(self, input)
+   gradOutput = makeBatch(self, gradOutput)
 
    scale = scale or 1
    if gradInput then
@@ -142,9 +159,13 @@ local function backward(self, input, gradOutput, scale, gradInput, gradWeight, g
       THNN.optionalTensor(gradWeight),
       THNN.optionalTensor(gradBias),
       THNN.optionalTensor(self.weight),
+      self.running_mean:cdata(),
+      self.running_var:cdata(),
       self.save_mean:cdata(),
       self.save_std:cdata(),
-      scale)
+      self.train,
+      scale,
+      self.eps)
 
    return self.gradInput
 end

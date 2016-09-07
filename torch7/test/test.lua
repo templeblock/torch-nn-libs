@@ -183,7 +183,7 @@ function torchtest.rsqrt()
 end
 
 function torchtest.sigmoid()
-   -- cant use genericSingleOpTest, since `math.sigmoid` doesnt exist, have to use
+   -- can't use genericSingleOpTest, since `math.sigmoid` doesn't exist, have to use
    -- `torch.sigmoid` instead
    local inputValues = {-1000,-1,0,0.5,1,2,1000}
    local expectedOutput = {0.0000, 0.2689, 0.5, 0.6225, 0.7311, 0.8808, 1.000}
@@ -520,7 +520,7 @@ for i, v in ipairs{{10}, {5, 5}} do
            x:zero()
            mytester:assert(not x:all(), 'error in all()')
            mytester:assert(not x:any(), 'error in any()')
-           
+
            x:fill(2)
            mytester:assert(x:all(), 'error in all()')
            mytester:assert(x:any(), 'error in any()')
@@ -701,12 +701,29 @@ function torchtest.div()
    mytester:assertlt(err, precision, 'error in torch.div - scalar, non contiguous')
 end
 
-function torchtest.mod()
-   local m1 = torch.Tensor(10,10):uniform(10)
+function torchtest.fmod()
+   local m1 = torch.Tensor(10,10):uniform(-10, 10)
    local res1 = m1:clone()
 
    local q = 2.1
-   res1[{ {},3 }]:mod(q)
+   res1[{ {},3 }]:fmod(q)
+
+   local res2 = m1:clone()
+   for i = 1,m1:size(1) do
+      res2[{ i,3 }] = math.fmod(res2[{ i,3 }], q)
+   end
+
+   local err = (res1-res2):abs():max()
+
+   mytester:assertlt(err, precision, 'error in torch.fmod - scalar, non contiguous')
+end
+
+function torchtest.remainder()
+   local m1 = torch.Tensor(10, 10):uniform(-10, 10)
+   local res1 = m1:clone()
+
+   local q = 2.1
+   res1[{ {},3 }]:remainder(q)
 
    local res2 = m1:clone()
    for i = 1,m1:size(1) do
@@ -715,7 +732,7 @@ function torchtest.mod()
 
    local err = (res1-res2):abs():max()
 
-   mytester:assertlt(err, precision, 'error in torch.mod - scalar, non contiguous')
+   mytester:assertlt(err, precision, 'error in torch.remainder - scalar, non contiguous')
 end
 
 function torchtest.mm()
@@ -1034,18 +1051,18 @@ function torchtest.cdiv()  -- [res] torch.cdiv([res,] tensor1, tensor2)
    mytester:assertlt(maxerr, precision, 'error in torch.cdiv - non-contiguous')
 end
 
-function torchtest.cmod()  -- [res] torch.cmod([res,] tensor1, tensor2)
+function torchtest.cfmod()
    -- contiguous
-   local m1 = torch.Tensor(10, 10, 10):uniform(10)
-   local m2 = torch.Tensor(10, 10 * 10):uniform(3)
+   local m1 = torch.Tensor(10, 10, 10):uniform(-10, 10)
+   local m2 = torch.Tensor(10, 10 * 10):uniform(-3, 3)
    local sm1 = m1[{4, {}, {}}]
    local sm2 = m2[{4, {}}]
-   local res1 = torch.cmod(sm1, sm2)
+   local res1 = torch.cfmod(sm1, sm2)
    local res2 = res1:clone():zero()
    for i = 1,sm1:size(1) do
       for j = 1, sm1:size(2) do
          local idx1d = (((i-1)*sm1:size(1)))+j
-         res2[i][j] = sm1[i][j] % sm2[idx1d]
+         res2[i][j] = math.fmod(sm1[i][j], sm2[idx1d])
       end
    end
    local err = res1:clone():zero()
@@ -1064,14 +1081,47 @@ function torchtest.cmod()  -- [res] torch.cmod([res,] tensor1, tensor2)
          end
       end
    end
-   mytester:assertlt(maxerr, precision, 'error in torch.cmod - contiguous')
+   mytester:assertlt(maxerr, precision, 'error in torch.cfmod - contiguous')
 
    -- non-contiguous
-   local m1 = torch.Tensor(10, 10, 10):uniform(10)
-   local m2 = torch.Tensor(10 * 10, 10 * 10):uniform(3)
+   local m1 = torch.Tensor(10, 10, 10):uniform(-10, 10)
+   local m2 = torch.Tensor(10 * 10, 10 * 10):uniform(-3, 3)
    local sm1 = m1[{{}, 4, {}}]
    local sm2 = m2[{{}, 4}]
-   local res1 = torch.cmod(sm1, sm2)
+   local res1 = torch.cfmod(sm1, sm2)
+   local res2 = res1:clone():zero()
+   for i = 1,sm1:size(1) do
+      for j = 1, sm1:size(2) do
+         local idx1d = (((i-1)*sm1:size(1)))+j
+         res2[i][j] = math.fmod(sm1[i][j], sm2[idx1d])
+      end
+   end
+   local err = res1:clone():zero()
+   -- find absolute error
+   for i = 1, res1:size(1) do
+      for j = 1, res1:size(2) do
+         err[i][j] = math.abs(res1[i][j] - res2[i][j])
+      end
+   end
+   -- find maximum element of error
+   local maxerr = 0
+   for i = 1, err:size(1) do
+      for j = 1, err:size(2) do
+         if err[i][j] > maxerr then
+            maxerr = err[i][j]
+         end
+      end
+   end
+   mytester:assertlt(maxerr, precision, 'error in torch.cfmod - non-contiguous')
+end
+
+function torchtest.cremainder()
+   -- contiguous
+   local m1 = torch.Tensor(10, 10, 10):uniform(-10, 10)
+   local m2 = torch.Tensor(10, 10 * 10):uniform(-3, 3)
+   local sm1 = m1[{4, {}, {}}]
+   local sm2 = m2[{4, {}}]
+   local res1 = torch.cremainder(sm1, sm2)
    local res2 = res1:clone():zero()
    for i = 1,sm1:size(1) do
       for j = 1, sm1:size(2) do
@@ -1095,7 +1145,38 @@ function torchtest.cmod()  -- [res] torch.cmod([res,] tensor1, tensor2)
          end
       end
    end
-   mytester:assertlt(maxerr, precision, 'error in torch.cmod - non-contiguous')
+   mytester:assertlt(maxerr, precision, 'error in torch.cremainder - contiguous')
+
+   -- non-contiguous
+   local m1 = torch.Tensor(10, 10, 10):uniform(-10, 10)
+   local m2 = torch.Tensor(10 * 10, 10 * 10):uniform(-3, 3)
+   local sm1 = m1[{{}, 4, {}}]
+   local sm2 = m2[{{}, 4}]
+   local res1 = torch.cremainder(sm1, sm2)
+   local res2 = res1:clone():zero()
+   for i = 1,sm1:size(1) do
+      for j = 1, sm1:size(2) do
+         local idx1d = (((i-1)*sm1:size(1)))+j
+         res2[i][j] = sm1[i][j] % sm2[idx1d]
+      end
+   end
+   local err = res1:clone():zero()
+   -- find absolute error
+   for i = 1, res1:size(1) do
+      for j = 1, res1:size(2) do
+         err[i][j] = math.abs(res1[i][j] - res2[i][j])
+      end
+   end
+   -- find maximum element of error
+   local maxerr = 0
+   for i = 1, err:size(1) do
+      for j = 1, err:size(2) do
+         if err[i][j] > maxerr then
+            maxerr = err[i][j]
+         end
+      end
+   end
+   mytester:assertlt(maxerr, precision, 'error in torch.cremainder - non-contiguous')
 end
 
 function torchtest.cmul()  -- [res] torch.cmul([res,] tensor1, tensor2)
@@ -1392,6 +1473,13 @@ function torchtest.range()
    local mxx = torch.Tensor()
    torch.range(mxx,0,1)
    mytester:asserteq(maxdiff(mx,mxx),0,'torch.range value')
+
+   -- Check range for non-contiguous tensors.
+   local x = torch.zeros(2, 3)
+   local y = x:narrow(2, 2, 2)
+   y:range(0, 3)
+   mytester:assertTensorEq(x, torch.Tensor{{0, 0, 1}, {0, 2, 3}}, 1e-16,
+                           'non-contiguous range failed')
 end
 function torchtest.rangenegative()
    local mx = torch.Tensor({1,0})
@@ -1771,6 +1859,19 @@ function torchtest.linspace()
    mytester:asserteq(maxdiff(mx,mxx),0,'torch.linspace value')
    mytester:assertError(function() torch.linspace(0,1,1) end, 'accepted 1 point between 2 distinct endpoints')
    mytester:assertTensorEq(torch.linspace(0,0,1),torch.zeros(1),1e-16, 'failed to generate for torch.linspace(0,0,1)')
+
+   -- Check linspace for generating with start > end.
+   mytester:assertTensorEq(torch.linspace(2,0,3),
+                           torch.Tensor{2,1,0},
+                           1e-16,
+                           'failed to generate for torch.linspace(2,0,3)')
+
+   -- Check linspace for non-contiguous tensors.
+   local x = torch.zeros(2, 3)
+   local y = x:narrow(2, 2, 2)
+   y:linspace(0, 3, 4)
+   mytester:assertTensorEq(x, torch.Tensor{{0, 0, 1}, {0, 2, 3}}, 1e-16,
+                           'non-contiguous linspace failed')
 end
 function torchtest.logspace()
    local from = math.random()
@@ -1781,6 +1882,19 @@ function torchtest.logspace()
    mytester:asserteq(maxdiff(mx,mxx),0,'torch.logspace value')
    mytester:assertError(function() torch.logspace(0,1,1) end, 'accepted 1 point between 2 distinct endpoints')
    mytester:assertTensorEq(torch.logspace(0,0,1),torch.ones(1),1e-16, 'failed to generate for torch.linspace(0,0,1)')
+
+   -- Check logspace for generating with start > end.
+   mytester:assertTensorEq(torch.logspace(1,0,2),
+                           torch.Tensor{10, 1},
+                           1e-16,
+                           'failed to generate for torch.logspace(1,0,2)')
+
+   -- Check logspace for non-contiguous tensors.
+   local x = torch.zeros(2, 3)
+   local y = x:narrow(2, 2, 2)
+   y:logspace(0, 3, 4)
+   mytester:assertTensorEq(x, torch.Tensor{{0, 1, 10}, {0, 100, 1000}}, 1e-16,
+                           'non-contiguous logspace failed')
 end
 function torchtest.rand()
    torch.manualSeed(123456)
@@ -2369,6 +2483,20 @@ function torchtest.RNGStateAliasing()
     mytester:assertTensorEq(target_value, forked_value, 1e-16, "RNG has not forked correctly.")
 end
 
+function torchtest.serializeGenerator()
+   local generator = torch.Generator()
+   torch.manualSeed(generator, 123)
+   local differentGenerator = torch.Generator()
+   torch.manualSeed(differentGenerator, 124)
+   local serializedGenerator = torch.serialize(generator)
+   local deserializedGenerator = torch.deserialize(serializedGenerator)
+   local generated = torch.random(generator)
+   local differentGenerated = torch.random(differentGenerator)
+   local deserializedGenerated = torch.random(deserializedGenerator)
+   mytester:asserteq(generated, deserializedGenerated, 'torch.Generator changed internal state after being serialized')
+   mytester:assertne(generated, differentGenerated, 'Generators with different random seed should not produce the same output')
+end
+
 function torchtest.testBoxMullerState()
     torch.manualSeed(123)
     local odd_number = 101
@@ -2793,7 +2921,12 @@ function torchtest.abs()
    end
 
    -- Checking that the right abs function is called for LongTensor
-   local bignumber = 2^31 + 1
+   local bignumber
+   if torch.LongTensor():elementSize() > 4 then
+      bignumber = 2^31 + 1
+   else
+      bignumber = 2^15 + 1
+   end
    local input = torch.LongTensor{-bignumber}
    mytester:assertgt(input:abs()[1], 0, 'torch.abs(3)')
 end
@@ -2881,21 +3014,22 @@ function torchtest.isTypeOfPartial()
                    'isTypeOf error: inheritance')
 end
 
-function torchtest.isTypeOfComposite()
-   do
-      local Enclosed = torch.class('Enclosed')
-      rawset(_G, 'Enclosing', {})
-      local Enclosing_Enclosed = torch.class('Enclosing.Enclosed')
-   end
-   local enclosed = Enclosed()
-   local enclosing_enclosed = Enclosing.Enclosed()
-
-   mytester:assert(not torch.isTypeOf(enclosed, Enclosing.Enclosed),
-                   'isTypeOf error: incorrect composite match')
-   mytester:assert(not torch.isTypeOf(enclosed, 'Enclosing.Enclosed'),
-                   'isTypeOf error: incorrect composite match')
-   mytester:assert(torch.isTypeOf(enclosing_enclosed, 'Enclosed'),
-                   'isTypeOf error: incorrect composite match')
+function torchtest.isTypeOfPattern()
+   local t = torch.LongTensor()
+   mytester:assert(torch.isTypeOf(t, torch.LongTensor),
+                   'isTypeOf error: incorrect match')
+   mytester:assert(not torch.isTypeOf(t, torch.IntTensor),
+                   'isTypeOf error: incorrect match')
+   mytester:assert(torch.isTypeOf(t, 'torch.LongTensor'),
+                   'isTypeOf error: incorrect match')
+   mytester:assert(not torch.isTypeOf(t, 'torch.Long'),
+                   'isTypeOf error: incorrect match')
+   mytester:assert(torch.isTypeOf(t, 'torch.*Tensor'),
+                   'isTypeOf error: incorrect match')
+   mytester:assert(torch.isTypeOf(t, '.*Long'),
+                   'isTypeOf error: incorrect match')
+   mytester:assert(not torch.isTypeOf(t, 'torch.IntTensor'),
+                   'isTypeOf error: incorrect match')
 end
 
 function torchtest.isTensor()
@@ -2990,6 +3124,38 @@ function torchtest.isSetTo()
    mytester:assert(not torch.Tensor():isSetTo(torch.Tensor()),
                    "Tensors with no storages should not appear to be set " ..
                    "to each other")
+end
+
+function torchtest.equal()
+  -- Contiguous, 1D
+  local t1 = torch.Tensor{3, 4, 9, 10}
+  local t2 = t1:clone()
+  local t3 = torch.Tensor{1, 9, 3, 10}
+  local t4 = torch.Tensor{3, 4, 9}
+  local t5 = torch.Tensor()
+  mytester:assert(t1:equal(t2) == true, "wrong answer ")
+  mytester:assert(t1:equal(t3) == false, "wrong answer ")
+  mytester:assert(t1:equal(t4) == false, "wrong answer ")
+  mytester:assert(t1:equal(t5) == false, "wrong answer ")
+  mytester:assert(torch.equal(t1, t2) == true, "wrong answer ")
+  mytester:assert(torch.equal(t1, t3) == false, "wrong answer ")
+  mytester:assert(torch.equal(t1, t4) == false, "wrong answer ")
+  mytester:assert(torch.equal(t1, t5) == false, "wrong answer ")
+
+  -- Non contiguous, 2D
+  local s = torch.Tensor({{1, 2, 3, 4}, {5, 6, 7, 8}})
+  local s1 = s[{{}, {2, 3}}]
+  local s2 = s1:clone()
+  local s3 = torch.Tensor({{2, 3}, {6, 7}})
+  local s4 = torch.Tensor({{0, 0}, {0, 0}})
+
+  mytester:assert(not s1:isContiguous(), "wrong answer ")
+  mytester:assert(s1:equal(s2) == true, "wrong answer ")
+  mytester:assert(s1:equal(s3) == true, "wrong answer ")
+  mytester:assert(s1:equal(s4) == false, "wrong answer ")
+  mytester:assert(torch.equal(s1, s2) == true, "wrong answer ")
+  mytester:assert(torch.equal(s1, s3) == true, "wrong answer ")
+  mytester:assert(torch.equal(s1, s4) == false, "wrong answer ")
 end
 
 function torchtest.isSize()

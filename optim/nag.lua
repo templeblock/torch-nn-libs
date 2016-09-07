@@ -1,11 +1,11 @@
 ----------------------------------------------------------------------
--- An implementation of SGD adapted with features of Nesterov's 
+-- An implementation of SGD adapted with features of Nesterov's
 -- Accelerated Gradient method, based on the paper
 -- On the Importance of Initialization and Momentum in Deep Learning
 -- Sutsveker et. al., ICML 2013
 --
 -- ARGS:
--- opfunc : a function that takes a single input (X), the point of 
+-- opfunc : a function that takes a single input (X), the point of
 --          evaluation, and returns f(X) and df/dX
 -- x      : the initial point
 -- state  : a table describing the state of the optimizer; after each
@@ -42,13 +42,9 @@ function optim.nag(opfunc, x, config, state)
 
    -- (1) evaluate f(x) and df/dx
    -- first step in the direction of the momentum vector
-   if not state.x_copy then
-      state.x_copy = x:clone()
-   else
-      state.x_copy:resizeAs(x):copy(x)
-   end
+
    if state.dfdx then
-      x:add(mom, state.dfdx) 
+      x:add(mom, state.dfdx)
    end
    -- then compute gradient at that point
    -- comment out the above line to get the original SGD
@@ -75,12 +71,12 @@ function optim.nag(opfunc, x, config, state)
          state.deltaParameters = torch.Tensor():typeAs(x):resizeAs(dfdx)
       end
       state.deltaParameters:copy(lrs):cmul(dfdx)
+      x:add(-clr, state.deltaParameters)
       state.dfdx:add(-clr, state.deltaParameters)
    else
+      x:add(-clr, dfdx)
       state.dfdx:add(-clr, dfdx)
    end
-   state.x_copy:add(state.dfdx)
-   x:copy(state.x_copy)
 
    -- (6) update evaluation counter
    state.evalCounter = state.evalCounter + 1

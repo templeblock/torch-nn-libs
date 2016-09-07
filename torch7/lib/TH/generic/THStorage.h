@@ -34,7 +34,7 @@ typedef struct THStorage
 
 TH_API real* THStorage_(data)(const THStorage*);
 TH_API long THStorage_(size)(const THStorage*);
-TH_API int THStorage_(elementSize)();
+TH_API int THStorage_(elementSize)(void);
 
 /* slow access -- checks everything */
 TH_API void THStorage_(set)(THStorage*, long, real);
@@ -46,7 +46,7 @@ TH_API THStorage* THStorage_(newWithSize1)(real);
 TH_API THStorage* THStorage_(newWithSize2)(real, real);
 TH_API THStorage* THStorage_(newWithSize3)(real, real, real);
 TH_API THStorage* THStorage_(newWithSize4)(real, real, real, real);
-TH_API THStorage* THStorage_(newWithMapping)(const char *filename, long size, int shared);
+TH_API THStorage* THStorage_(newWithMapping)(const char *filename, long size, int flags);
 
 /* takes ownership of data */
 TH_API THStorage* THStorage_(newWithData)(real *data, long size);
@@ -61,6 +61,7 @@ TH_API THStorage* THStorage_(newWithDataAndAllocator)(
 TH_API void THStorage_(setFlag)(THStorage *storage, const char flag);
 TH_API void THStorage_(clearFlag)(THStorage *storage, const char flag);
 TH_API void THStorage_(retain)(THStorage *storage);
+TH_API void THStorage_(swap)(THStorage *storage1, THStorage *storage2);
 
 /* might differ with other API (like CUDA) */
 TH_API void THStorage_(free)(THStorage *storage);

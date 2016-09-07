@@ -1,3 +1,4 @@
+local THNN = require 'nn.THNN'
 local SpatialConvolution, parent = torch.class('nn.SpatialConvolution', 'nn.Module')
 
 function SpatialConvolution:__init(nInputPlane, nOutputPlane, kW, kH, dW, dH, padW, padH)
@@ -22,6 +23,12 @@ function SpatialConvolution:__init(nInputPlane, nOutputPlane, kW, kH, dW, dH, pa
    self.gradBias = torch.Tensor(nOutputPlane)
 
    self:reset()
+end
+
+function SpatialConvolution:noBias()
+   self.bias = nil
+   self.gradBias = nil
+   return self
 end
 
 function SpatialConvolution:reset(stdv)
@@ -82,72 +89,54 @@ local function makeContiguous(self, input, gradOutput)
    return input, gradOutput
 end
 
--- function to re-view the weight layout in a way that would make the MM ops happy
-local function viewWeight(self)
-   self.weight = self.weight:view(self.nOutputPlane, self.nInputPlane * self.kH * self.kW)
-   if self.gradWeight and self.gradWeight:dim() > 0 then
-      self.gradWeight = self.gradWeight:view(self.nOutputPlane, self.nInputPlane * self.kH * self.kW)
-   end
-end
-
-local function unviewWeight(self)
-   self.weight = self.weight:view(self.nOutputPlane, self.nInputPlane, self.kH, self.kW)
-   if self.gradWeight and self.gradWeight:dim() > 0 then
-      self.gradWeight = self.gradWeight:view(self.nOutputPlane, self.nInputPlane, self.kH, self.kW)
-   end
-end
-
 function SpatialConvolution:updateOutput(input)
+   assert(input.THNN, torch.type(input)..'.THNN backend not imported')
    backCompatibility(self)
-   viewWeight(self)
    input = makeContiguous(self, input)
    input.THNN.SpatialConvolutionMM_updateOutput(
       input:cdata(),
       self.output:cdata(),
       self.weight:cdata(),
-      self.bias:cdata(),
+      THNN.optionalTensor(self.bias),
       self.finput:cdata(),
       self.fgradInput:cdata(),
       self.kW, self.kH,
       self.dW, self.dH,
       self.padW, self.padH
    )
-   unviewWeight(self)
    return self.output
 end
 
 function SpatialConvolution:updateGradInput(input, gradOutput)
+   assert(input.THNN, torch.type(input)..'.THNN backend not imported')
    if self.gradInput then
       backCompatibility(self)
-      viewWeight(self)
       input, gradOutput = makeContiguous(self, input, gradOutput)
       input.THNN.SpatialConvolutionMM_updateGradInput(
          input:cdata(),
          gradOutput:cdata(),
          self.gradInput:cdata(),
          self.weight:cdata(),
-         self.bias:cdata(),
          self.finput:cdata(),
          self.fgradInput:cdata(),
          self.kW, self.kH,
          self.dW, self.dH,
          self.padW, self.padH
       )
-      unviewWeight(self)
       return self.gradInput
    end
 end
 
 function SpatialConvolution:accGradParameters(input, gradOutput, scale)
+   assert(input.THNN, torch.type(input)..'.THNN backend not imported')
    scale = scale or 1
    backCompatibility(self)
    input, gradOutput = makeContiguous(self, input, gradOutput)
-   viewWeight(self)
    input.THNN.SpatialConvolutionMM_accGradParameters(
       input:cdata(),
       gradOutput:cdata(),
       self.gradWeight:cdata(),
-      self.gradBias:cdata(),
+      THNN.optionalTensor(self.gradBias),
       self.finput:cdata(),
       self.fgradInput:cdata(),
       self.kW, self.kH,
@@ -155,7 +144,6 @@ function SpatialConvolution:accGradParameters(input, gradOutput, scale)
       self.padW, self.padH,
       scale
    )
-   unviewWeight(self)
 end
 
 function SpatialConvolution:type(type,tensorCache)
@@ -173,7 +161,11 @@ function SpatialConvolution:__tostring__()
    if (self.padW or self.padH) and (self.padW ~= 0 or self.padH ~= 0) then
      s = s .. ', ' .. self.padW .. ',' .. self.padH
    end
-   return s .. ')'
+   if self.bias then
+      return s .. ')'
+   else
+      return s .. ') without bias'
+   end
 end
 
 function SpatialConvolution:clearState()

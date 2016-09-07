@@ -56,6 +56,7 @@ end
 
 -- Add a failure to the test.
 function Tester:_failure(message)
+   if self.rethrow then error(message, 2) end
    local name = self._currentTestName
    self.assertionFail[name] = self.assertionFail[name] + 1
    self.errors[#self.errors + 1] = self:_addDebugInfo(message)
@@ -235,7 +236,7 @@ function Tester:_assertTensorEqOrNeq(ta, tb, negate, ...)
    if self._assertTensorEqIgnoresDims and (not negate) and success
          and not ta:isSameSizeAs(tb) then
      self:_warning("Tensors have the same content but different dimensions. "
-                   .. "For backwards compatability, they are considered equal, "
+                   .. "For backwards compatibility, they are considered equal, "
                    .. "but this may change in the future. Consider using :eq "
                    .. "to check for equality instead.")
    end
@@ -377,14 +378,13 @@ end
 
 local NCOLS = 80
 local coloured
-local c = {}
-local enable_colors = pcall(require, 'sys')
+local enable_colors, c = pcall(require, 'sys.colors')
 if arg and enable_colors then  -- have we been invoked from the commandline?
-   c = sys.COLORS
    coloured = function(str, colour)
       return colour .. str .. c.none
    end
 else
+   c = {}
    coloured = function(str)
       return str
    end
@@ -460,7 +460,8 @@ function Tester:_run(tests)
       io.write('\n')
       io.flush()
 
-      if self.earlyAbort and (i < ntests) and (not status or not pass) then
+      if self.earlyAbort and (i < ntests) and (not status or not pass)
+            and (not skip) then
          io.write('Aborting on first error, not all tests have been executed\n')
          break
       end

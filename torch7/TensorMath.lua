@@ -55,11 +55,16 @@ static int torch_isnonemptytable(lua_State *L, int idx)
 interface:print([[
 static const void* torch_istensorarray(lua_State *L, int idx)
 {
+  const char* tname;
+  int tensor_idx;
   if (!torch_isnonemptytable(L, idx)) return 0;
 
-  lua_checkstack(L, 1);
-  lua_rawgeti(L, 1, 1);
-  return (torch_istensortype(L, luaT_typename(L, -1)));
+  lua_checkstack(L, 3);
+  lua_rawgeti(L, idx, 1);
+  tensor_idx = lua_gettop(L);
+  tname = (torch_istensortype(L, luaT_typename(L, -1)));
+  lua_remove(L, tensor_idx);
+  return tname;
 }
 ]])
 
@@ -86,7 +91,6 @@ static int torch_NAME(lua_State *L)
   }
   else if(narg >= 1 && (tname = torch_istensorarray(L, 1))) /* torch table argument? */
   {
-    lua_remove(L, -2);
   }
   else if(narg >= 1 && lua_type(L, narg) == LUA_TSTRING
 	  && (tname = torch_istensortype(L, lua_tostring(L, narg)))) /* do we have a valid tensor type string then? */
@@ -261,6 +265,12 @@ for _,Tensor in ipairs({"ByteTensor", "CharTensor",
          {name=Tensor},
          {name=accreal, creturned=true}})
 
+   wrap("equal",
+        cname("equal"),
+        {{name=Tensor},
+         {name=Tensor},
+         {name="boolean", creturned=true}})
+
    wrap("add",
         cname("add"),
         {{name=Tensor, default=true, returned=true, method={default='nil'}},
@@ -295,8 +305,21 @@ for _,Tensor in ipairs({"ByteTensor", "CharTensor",
          {name=Tensor, method={default=1}},
          {name=real}})
 
+   wrap("fmod",
+        cname("fmod"),
+        {{name=Tensor, default=true, returned=true, method={default='nil'}},
+         {name=Tensor, method={default=1}},
+         {name=real}})
+
+   wrap("remainder",
+        cname("remainder"),
+        {{name=Tensor, default=true, returned=true, method={default='nil'}},
+         {name=Tensor, method={default=1}},
+         {name=real}})
+
+   -- mod alias
    wrap("mod",
-        cname("mod"),
+        cname("fmod"),
         {{name=Tensor, default=true, returned=true, method={default='nil'}},
          {name=Tensor, method={default=1}},
          {name=real}})
@@ -335,8 +358,21 @@ for _,Tensor in ipairs({"ByteTensor", "CharTensor",
          {name=Tensor, method={default=1}},
          {name=Tensor}})
 
+   wrap("cfmod",
+        cname("cfmod"),
+        {{name=Tensor, default=true, returned=true, method={default='nil'}},
+         {name=Tensor, method={default=1}},
+         {name=Tensor}})
+
+   wrap("cremainder",
+        cname("cremainder"),
+        {{name=Tensor, default=true, returned=true, method={default='nil'}},
+         {name=Tensor, method={default=1}},
+         {name=Tensor}})
+
+   -- cmod alias
    wrap("cmod",
-        cname("cmod"),
+        cname("cfmod"),
         {{name=Tensor, default=true, returned=true, method={default='nil'}},
          {name=Tensor, method={default=1}},
          {name=Tensor}})
@@ -616,7 +652,7 @@ wrap("topk",
         {{name=Tensor, default=true, returned=true},
          {name="IndexTensor", default=true, returned=true, noreadadd=true},
          {name=Tensor},
-         {name="index"},
+         {name="long"},
          {name="index", default=lastdim(3)}})
 
    wrap("mode",

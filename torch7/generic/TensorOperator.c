@@ -60,7 +60,7 @@ static int torch_TensorOperator_(__sub__)(lua_State *L)
     {
       THTensor_(resizeAs)(r, tensor1);
       THTensor_(copy)(r, tensor1);
-      THTensor_(add)(r, r, -luaL_checknumber(L, 2));
+      THTensor_(add)(r, r, -(real)luaL_checknumber(L, 2));
     }
     else
     {
@@ -149,7 +149,7 @@ static int torch_TensorOperator_(__div__)(lua_State *L)
 
   THTensor_(resizeAs)(r, tensor);
   THTensor_(copy)(r, tensor);
-  THTensor_(mul)(r, r, 1/lua_tonumber(L, 2));
+  THTensor_(div)(r, r, lua_tonumber(L, 2));
 
   return 1;
 }
@@ -166,7 +166,7 @@ static int torch_TensorOperator_(__mod__)(lua_State *L)
 
   THTensor_(resizeAs)(r, tensor);
   THTensor_(copy)(r, tensor);
-  THTensor_(mod)(r, r, lua_tonumber(L, 2));
+  THTensor_(remainder)(r, r, lua_tonumber(L, 2));
 
   return 1;
 }
